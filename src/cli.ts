@@ -37,7 +37,7 @@ import type { RunRecord, RunResult } from "./run.ts";
 import type { GateOptions } from "./gate.ts";
 import type { Framework, JevContext } from "./types.ts";
 
-const FORMATS: readonly string[] = ["vitest", "jest", "node", "bun", "playwright", "rust", "go", "auto"];
+const FORMATS: readonly string[] = ["vitest", "jest", "node", "bun", "playwright", "rust", "go", "rspec", "auto"];
 
 /** Where a run leaves its answers, and what a bare `--replay` means. */
 export const DEFAULT_RECORD_PATH = `${RECORD_DIR}/${RECORD_FILE}`;
@@ -274,7 +274,7 @@ Usage:
 Options:
   --base <ref>        compare against the merge base with <ref>, as a pull request does
   --staged            use the staged change instead of the working tree
-  --format <name>     vitest | jest | node | bun | playwright | rust | go | auto  (default: auto)
+  --format <name>     vitest | jest | node | bun | playwright | rust | go | rspec | auto  (default: auto)
   --cutoff <n>        select at or above this score level (default: 2)
   --unsure-below <n>  a confidence under this counts as unsure (default: 0.5)
   --unsure-margin <n> rescue an unsure answer this far under the cutoff (default: 1)
@@ -295,6 +295,7 @@ Examples:
   jev-test-filter --verify-snapshots --json
   jev-test-filter --base main --format go --exec -- go test
   jev-test-filter --base main --format rust --exec -- cargo test
+  jev-test-filter --base main --format rspec --exec -- bundle exec rspec
   jev-test-filter --base main --json > selection.json
 
 Rust is never discovered automatically: listing its tests builds the test

@@ -11,9 +11,13 @@
  *     alternation of anchored full names, is the only safe shape.
  *   - Playwright's own --list supplies project-aware names for --test-list.
  *     Source-only discovery retains file:line as its conservative fallback.
+ *   - RSpec is selected by `file:line` only. Its full description depends on
+ *     whether a group was described by a class or by a string, which a name
+ *     read out of the source cannot always tell apart.
  */
 import type { Framework, Selection, TestCase } from "./types.ts";
 import { createHash } from "node:crypto";
+import { rspecFullName } from "./extract-rspec.ts";
 
 export type FilterMode =
   /** Everything was selected: pass no arguments and let the runner run. */
@@ -56,6 +60,7 @@ export function escapeRegExp(s: string): string {
 export function fullName(t: TestCase): string {
   if (t.framework === "rust") return t.titlePath.join("::");
   if (t.framework === "go") return t.titlePath.join("/");
+  if (t.framework === "rspec") return rspecFullName(t.titlePath);
   const sep = t.framework === "node" || t.framework === "bun" ? " " : " > ";
   return t.titlePath.join(sep);
 }
@@ -113,6 +118,19 @@ export function buildFilter(sel: Selection, framework: Framework, { fileThreshol
     // Targets are not narrowed: a name that exists in two of them runs in
     // both, which costs time and cannot lose a test.
     return { mode: "exact", argv: ["--", "--exact", ...selected.map(fullName)] };
+  }
+
+  if (framework === "rspec") {
+    const files = uniqueFiles(selected);
+    if (selected.length / all.length > fileThreshold) return { mode: "files", argv: files };
+    // One argument per file, `spec/a_spec.rb:12:30`: RSpec takes several
+    // lines after one path, and a line filter applies to its own file only.
+    const lines = new Map<string, Set<number>>(files.map((f) => [f, new Set()]));
+    for (const t of selected) lines.get(t.file)!.add(t.runnerLine ?? t.line);
+    return {
+      mode: "locations",
+      argv: files.map((f) => [f, ...[...lines.get(f)!].sort((a, b) => a - b)].join(":")),
+    };
   }
 
   if (framework === "go") {

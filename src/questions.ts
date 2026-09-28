@@ -19,6 +19,7 @@
  * context says nothing about, so such a test is asked exactly what it was
  * asked before contexts existed.
  */
+import { rspecFullName } from "./extract-rspec.ts";
 import type { TestCase } from "./types.ts";
 
 export interface ScoreQuestion {
@@ -55,6 +56,7 @@ export function questionId(i: number): string {
 export function displayName(t: TestCase): string {
   if (t.framework === "rust") return t.titlePath.join("::");
   if (t.framework === "go") return t.titlePath.join("/");
+  if (t.framework === "rspec") return rspecFullName(t.titlePath);
   const sep = t.framework === "node" ? " " : " > ";
   return t.titlePath.join(sep);
 }
