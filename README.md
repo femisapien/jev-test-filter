@@ -242,13 +242,18 @@ Playwright's own collected list instead. For source discovery, a file counts
 as a test file when it is named
 `*.test.*`, `*.vitest.*` or `*.spec.*` with a `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`, `.cjs`,
 `.mts` or `.cts` extension, when it ends in `_test.go`, which is Go's own
-convention and the only one `go test` compiles into a test binary, or when it
-ends in `_spec.rb`, which is what RSpec's default `--pattern` looks for.
+convention and the only one `go test` compiles into a test binary. Under
+`--format rspec`, a file ending in `_spec.rb` counts too, which is what
+RSpec's default `--pattern` looks for.
 
-**Rust is the one exception: it is never discovered automatically.** Listing a
+**Rust and RSpec are never discovered automatically.** Listing a
 crate's tests means running `cargo test -- --list`, and that builds the test
 targets. A tool that triggers a compile nobody asked for is a tool that gets
 removed from the workflow, so it happens only when you write `--format rust`.
+RSpec examples cost only a parse, but a Rails application with Vitest or Jest
+tests for its front end is common, and discovering its `_spec.rb` files unasked
+would turn that repository's `--exec -- vitest run` into a mixed-framework
+error. They are read only when you write `--format rspec`.
 Every other language is read out of the source and costs nothing but a parse.
 
 ### Rust and Go
@@ -328,9 +333,9 @@ $ jev-test-filter --format rspec --exec -- bundle exec rspec
 
 Examples are read out of the `*_spec.rb` sources, not listed by
 `rspec --dry-run`: that loads every spec file, and in a Rails application it
-boots the application. Pass `--format rspec` in a repository that also has
-JavaScript tests, for the same reason as Go. Do not give `rspec` its own paths;
-the tool appends the locations it chose.
+boots the application. `--format rspec` is required, even in a repository with
+no other tests. Do not give `rspec` its own paths; the tool appends the
+locations it chose.
 
 The same cart again, in Ruby, with the discount broken (rspec-core 3.13.6,
 ruby 3.3.8):
@@ -451,6 +456,11 @@ And for RSpec, measured on rspec-core 3.13.6 and ruby 3.3.8:
   brought in. `include_examples` copies the examples into the enclosing group
   with the lines of the file that defined them, so it is named by the line
   that group's block opens on, which runs the whole group.
+- **A `shared_examples` block defined in a `_spec.rb` file is reached only
+  through that file.** Its examples are named by their own lines, which run
+  the inclusions in the same file; an `it_behaves_like` in another file is a
+  test of its own and is scored like any other. Shared examples usually live
+  in `spec/support`, which is not a spec file, so this rarely matters.
 
 The name `--json` reports is for reading only: the class-versus-string
 distinction is gone once a title is a string, so a group described by the

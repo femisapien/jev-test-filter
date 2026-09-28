@@ -5,6 +5,11 @@
  * asked for: its names come from `cargo test -- --list`, which builds the test
  * targets, and a tool that triggers a compile nobody asked for is a tool that
  * gets removed from the workflow. `--format rust` is that asking.
+ *
+ * RSpec has to be asked for too, for a different reason: `_spec.rb` files were
+ * never discovered before, and a Rails application with Vitest or Jest tests
+ * for its front end is common. Discovering them unasked would turn that
+ * repository's existing `--exec -- vitest run` into a mixed-framework error.
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -29,7 +34,7 @@ export async function discoverTests(
       continue;
     }
     if (isRSpecFile(file)) {
-      if (format === null || format === "rspec") out.push(...extractRSpecTests(source, file));
+      if (format === "rspec") out.push(...extractRSpecTests(source, file));
       continue;
     }
     const framework = detectFramework(source, file);

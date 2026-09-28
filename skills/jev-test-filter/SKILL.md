@@ -68,9 +68,11 @@ ignores images, does not edit snapshots, and does not fail CI.
 4. **A repository with more than one framework needs `--format`.** There is no
    single command that runs Vitest and Playwright, so the tool asks instead of
    guessing, and exits 1. This is the one failure that is not a fail-safe.
-5. **`--format rust` is required for Rust and is never automatic.** Listing
-   cargo's tests builds the test targets. The tool does not start a compile
-   nobody asked for.
+5. **`--format rust` and `--format rspec` are required and never automatic.**
+   Listing cargo's tests builds the test targets, and the tool does not start
+   a compile nobody asked for. `_spec.rb` files are skipped unless asked for so
+   a Rails app's front-end `vitest run` does not become a mixed-framework
+   error.
 6. **Do not use it as a merge gate on its own.** It reduces what runs on a
    branch; the full suite still belongs somewhere before release.
 
