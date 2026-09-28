@@ -9,7 +9,7 @@ per-runner rules, and getting one wrong fails silently.
 Steps:
 
 1. Work out which runner this repository uses, and whether it has more than
-   one. `package.json` scripts, `Cargo.toml`, `go.mod`.
+   one. `package.json` scripts, `Cargo.toml`, `go.mod`, `Gemfile`.
 2. Check `TYPESAFE_API_KEY` is set. If it is not, say so and stop — without it
    the tool falls back to running everything, which the user can do directly.
 3. Run it with `--exec`, never by composing the command in a shell:

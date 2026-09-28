@@ -4,7 +4,7 @@
 alter the outcome of every single test in the repository, and prints the filter
 arguments your test runner already understands. It hands those arguments to the
 runner you already use — vitest, jest, `node --test`, `bun test`, Playwright,
-`cargo test` or `go test` — so the run covers the tests the change could plausibly break
+`cargo test`, `go test` or `rspec` — so the run covers the tests the change could plausibly break
 instead of all of them.
 
 It uses [Jev](https://typesafe.ai), TypeSafe's System One model: one shared
@@ -14,7 +14,8 @@ loop and no file reading by the model.
 ## Install
 
 Requires Node 24 or newer, `git`, and a TypeSafe API key. `--format rust` and
-`--format go` additionally need `cargo` and `go` on the `PATH`.
+`--format go` additionally need `cargo` and `go` on the `PATH`; `--format
+rspec` needs nothing beyond the `rspec` you already run.
 
 ### The command
 
@@ -240,8 +241,9 @@ not considered in that mode. Playwright with `--format playwright --exec` uses
 Playwright's own collected list instead. For source discovery, a file counts
 as a test file when it is named
 `*.test.*`, `*.vitest.*` or `*.spec.*` with a `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`, `.cjs`,
-`.mts` or `.cts` extension, or when it ends in `_test.go`, which is Go's own
-convention and the only one `go test` compiles into a test binary.
+`.mts` or `.cts` extension, when it ends in `_test.go`, which is Go's own
+convention and the only one `go test` compiles into a test binary, or when it
+ends in `_spec.rb`, which is what RSpec's default `--pattern` looks for.
 
 **Rust is the one exception: it is never discovered automatically.** Listing a
 crate's tests means running `cargo test -- --list`, and that builds the test
@@ -318,6 +320,41 @@ test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 3 filtered out
 It emitted `-- --exact cart::tests::apply_discount::clamps_at_zero
 cart::tests::apply_discount::halves_the_total`.
 
+### RSpec
+
+```
+$ jev-test-filter --format rspec --exec -- bundle exec rspec
+```
+
+Examples are read out of the `*_spec.rb` sources, not listed by
+`rspec --dry-run`: that loads every spec file, and in a Rails application it
+boots the application. Pass `--format rspec` in a repository that also has
+JavaScript tests, for the same reason as Go. Do not give `rspec` its own paths;
+the tool appends the locations it chose.
+
+The same cart again, in Ruby, with the discount broken (rspec-core 3.13.6,
+ruby 3.3.8):
+
+```
+$ rspec                                  # unfiltered
+5 examples, 1 failure
+
+$ jev-test-filter --format rspec --exec -- rspec
+jev-test-filter: 2/5 tests selected (locations)
+Run options: include {:locations=>{"./spec/cart_spec.rb"=>[7, 11]}}
+F.
+2 examples, 1 failure
+
+Failed examples:
+
+rspec ./spec/cart_spec.rb:5 # Cart.apply_discount halves the total
+```
+
+It emitted `spec/cart_spec.rb:7:11`, the last lines of the two
+`.apply_discount` examples; `spec/ship_spec.rb` was not loaded at all. Why
+the last line rather than the first is in
+[What it emits, per framework](#what-it-emits-per-framework).
+
 `--base <ref>` compares `<ref>...HEAD`, the way a pull request does. Without
 it, the working tree against `HEAD` is used; `--staged` uses the index.
 
@@ -337,6 +374,7 @@ before you hand-edit anything it prints.
 | `playwright` | runner's test title and project | `--test-list .jev-test-filter/playwright-….txt` with `--exec`; otherwise `file:line` | exact list or positionals |
 | `rust` | `"::"` — `cart::tests::halves_the_total` | `-- --exact <name> <name>…`, one invocation | after a literal `--` |
 | `go` | `"/"` — `TestApplyDiscount/halves the total` | `-run '^(?:TestA\|TestB)$'` plus the `./pkg` directories | pattern **before** the packages |
+| `rspec` | a space, none before `#`/`.`/`::` after a class — `Cart#total sums` | `spec/a_spec.rb:12:30`, one argument per file | positionals |
 
 Bun 1.3.5 prints `Cart > totals` in its reporter, but `--test-name-pattern`
 matches `Cart totals`. The pattern above was verified by running Bun itself.
@@ -394,15 +432,39 @@ cargo 1.98.0 and go 1.26.2:
   all. `--json` still reports the per-subtest score, which is the finer signal
   and what a reader wants to see.
 
-The vitest, node:test, Bun, Playwright, Rust and Go spellings were each verified
-against the real runner. `jest` is emitted with the vitest shape and was not.
+And for RSpec, measured on rspec-core 3.13.6 and ruby 3.3.8:
+
+- **An example is named by its last line.** RSpec runs, for a requested line,
+  the example or group declared nearest at or above it, and it records a
+  multi-line call at a line of its own choosing: `it "a",\n :slow do` at its
+  first line, `it(\n "a"\n) do` at its last. The first line of the second
+  shape resolves to the example *before* it — a wrong test, run green. The last
+  line cannot, because nothing is declared inside an example body.
+- **It is never selected by name.** A full description depends on whether a
+  group was described by a class or a string (`Cart#total` against
+  `Cart #total`), and a name pattern spelled one way matches nothing spelled
+  the other. A location has no spelling, so an interpolated title, a
+  description-less one-liner (`it { is_expected.to … }`) and the rows of an
+  `.each` loop are all scored like any other test rather than selected unasked.
+- **Shared examples** are scored as one test per inclusion. `it_behaves_like`
+  declares a nested group at its own line, so that line runs everything it
+  brought in. `include_examples` copies the examples into the enclosing group
+  with the lines of the file that defined them, so it is named by the line
+  that group's block opens on, which runs the whole group.
+
+The name `--json` reports is for reading only: the class-versus-string
+distinction is gone once a title is a string, so a group described by the
+string `"Cart"` is joined as if it were the class.
+
+The vitest, node:test, Bun, Playwright, Rust, Go and RSpec spellings were each
+verified against the real runner. `jest` is emitted with the vitest shape and was not.
 
 The `mode` field in `--json` names the emitted filter shape:
 
 | `mode` | `argv` | Meaning |
 | --- | --- | --- |
 | `pattern` | flag, pattern, files | The normal case. |
-| `locations` | `file:line`… | Playwright. |
+| `locations` | `file:line`… | Playwright, and RSpec (`file:line:line`, one per file). |
 | `test-list` | `--test-list <file>` | Playwright with runner discovery; `test_list` in JSON holds the file's lines. |
 | `exact` | `--`, `--exact`, names… | Rust. Every name came from `cargo test -- --list`. |
 | `files` | files | A name pattern could not express the selection, so whole files were chosen. This happens when a selected test has a non-literal title, or when more than 80% of the suite was selected and the alternation would not be worth it. |
@@ -488,7 +550,7 @@ framework with no `--format`, which exits 1 (see Known limitations).
 ```
 --base <ref>        compare against <ref>...HEAD, as a pull request does
 --staged            use the staged change instead of the working tree
---format <name>     vitest | jest | node | bun | playwright | rust | go | auto  (default: auto)
+--format <name>     vitest | jest | node | bun | playwright | rust | go | rspec | auto  (default: auto)
 --cutoff <n>        select at or above this score level (default: 2)
 --unsure-below <n>  a confidence under this counts as unsure (default: 0.5)
 --unsure-margin <n> rescue an unsure answer this far under the cutoff (default: 1)
