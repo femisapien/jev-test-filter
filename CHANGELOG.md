@@ -6,6 +6,10 @@
 
 - Support RSpec with `--format rspec`, which is required: `_spec.rb` files are not discovered without it, so a repository that runs Vitest or Jest next to RSpec keeps working unchanged. Examples are read from `*_spec.rb` sources with ast-grep (no `rspec --dry-run`, so a Rails application is never booted), and a selection is passed as `file:line` locations, one argument per file (`spec/a_spec.rb:7:11`). An example is named by its last line, because RSpec resolves a line to the declaration nearest above it and records a multi-line call at a line of its own choosing. `it_behaves_like` and `include_examples` are scored as one test per inclusion.
 
+### Fixed
+
+- Keep every shared example selected when `it_behaves_like` or `it_should_behave_like` has a customization block, and discover examples brought in by `include_context`.
+
 ## 0.1.3
 
 ### Added

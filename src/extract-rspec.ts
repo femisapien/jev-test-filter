@@ -49,7 +49,7 @@ const IT_BEHAVES_LIKE = /^it_(?:behaves|should_behave)_like$/;
  * lines of the file that defined them, which is usually a support file, so
  * no line of this file reaches them -- except the enclosing group's own.
  */
-const INCLUDE_EXAMPLES = /^include_examples$/;
+const INCLUDE_SHARED = /^include_(?:examples|context)$/;
 
 /** The receiver a group may be called on: none, or `RSpec`. */
 function receiverAllowed(call: SgNode): boolean {
@@ -166,11 +166,15 @@ export function extractRSpecTests(source: string, file: string): TestCase[] {
         }
         if (IT_BEHAVES_LIKE.test(method)) {
           const verb = method === "it_behaves_like" ? "behaves like" : "it should behave like";
-          push(node, [...chain, `${verb} ${description(node)}`], node.range().end.line + 1);
+          // A customization block may declare its own examples. Its last
+          // line would select only the last of those, dropping the shared
+          // examples. Select the nested group's declaration instead.
+          const runnerLine = hasBlock ? blockLine(node) : node.range().end.line + 1;
+          push(node, [...chain, `${verb} ${description(node)}`], runnerLine);
           return;
         }
-        if (INCLUDE_EXAMPLES.test(method)) {
-          push(node, [...chain, `include_examples ${description(node)}`], groupLine ?? node.range().start.line + 1);
+        if (INCLUDE_SHARED.test(method)) {
+          push(node, [...chain, `${method} ${description(node)}`], groupLine ?? node.range().start.line + 1);
           return;
         }
       }

@@ -452,8 +452,10 @@ And for RSpec, measured on rspec-core 3.13.6 and ruby 3.3.8:
   description-less one-liner (`it { is_expected.to … }`) and the rows of an
   `.each` loop are all scored like any other test rather than selected unasked.
 - **Shared examples** are scored as one test per inclusion. `it_behaves_like`
-  declares a nested group at its own line, so that line runs everything it
-  brought in. `include_examples` copies the examples into the enclosing group
+  declares a nested group at its own line (the opening of its block, when
+  present), so that line runs everything it brought in, including examples
+  in a customization block. `include_examples` and `include_context` copy
+  the examples into the enclosing group
   with the lines of the file that defined them, so it is named by the line
   that group's block opens on, which runs the whole group.
 - **A `shared_examples` block defined in a `_spec.rb` file is reached only

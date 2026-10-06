@@ -124,3 +124,32 @@ test("the filter falls back to whole files when most of the suite is selected", 
   const f = buildFilter(sel(found, found.slice(1)), "rspec");
   assert.deepEqual(f, { mode: "files", argv: ["spec/cart_spec.rb"] });
 });
+
+test("a customized shared inclusion uses its block opening, before any nested examples", () => {
+  const source = `RSpec.describe "Cart" do
+  it_behaves_like "a shared group" do
+    it("custom example") {}
+  end
+  it_should_behave_like(
+    "a shared group"
+  ) do
+    it("another custom example") {}
+  end
+end`;
+  const tests = extractRSpecTests(source, "spec/cart_spec.rb");
+  assert.deepEqual(tests.map((t) => [t.line, t.endLine, t.runnerLine]), [[2, 4, 2], [5, 9, 7]]);
+});
+
+test("include_context can contain examples and selects its enclosing group", () => {
+  const source = `RSpec.describe(
+  "Cart"
+) do
+  include_context "a context with examples"
+  it("local example") {}
+end`;
+  const tests = extractRSpecTests(source, "spec/cart_spec.rb");
+  assert.deepEqual(tests.map((t) => [t.titlePath, t.runnerLine]), [
+    [["Cart", "include_context a context with examples"], 3],
+    [["Cart", "local example"], 5],
+  ]);
+});
