@@ -31,8 +31,15 @@ export function isGoTestFile(file: string): boolean {
   return GO_TEST_FILE.test(file);
 }
 
+/** RSpec's own convention, and the suffix its default `--pattern` looks for. */
+const RSPEC_TEST_FILE = /_spec\.rb$/;
+
+export function isRSpecFile(file: string): boolean {
+  return RSPEC_TEST_FILE.test(file);
+}
+
 export function isTestFile(file: string): boolean {
-  return TEST_FILE.test(file) || GO_TEST_FILE.test(file);
+  return TEST_FILE.test(file) || GO_TEST_FILE.test(file) || RSPEC_TEST_FILE.test(file);
 }
 
 /** `require("x")`, with the specifier captured. */

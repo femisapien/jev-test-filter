@@ -1,16 +1,22 @@
 /**
  * Every test in the repository, whatever language it is written in.
  *
- * ECMAScript and Go come out of the source and cost a parse. Rust has to be
+ * ECMAScript, Go and RSpec come out of the source and cost a parse. Rust has to be
  * asked for: its names come from `cargo test -- --list`, which builds the test
  * targets, and a tool that triggers a compile nobody asked for is a tool that
  * gets removed from the workflow. `--format rust` is that asking.
+ *
+ * RSpec has to be asked for too, for a different reason: `_spec.rb` files were
+ * never discovered before, and a Rails application with Vitest or Jest tests
+ * for its front end is common. Discovering them unasked would turn that
+ * repository's existing `--exec -- vitest run` into a mixed-framework error.
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { detectFramework, findTestFiles, isGoTestFile } from "./framework.ts";
+import { detectFramework, findTestFiles, isGoTestFile, isRSpecFile } from "./framework.ts";
 import { extractTests } from "./extract.ts";
 import { extractGoTests } from "./extract-go.ts";
+import { extractRSpecTests } from "./extract-rspec.ts";
 import { listRustTests } from "./cargo.ts";
 import type { Framework, TestCase } from "./types.ts";
 
@@ -25,6 +31,10 @@ export async function discoverTests(
     const source = await readFile(join(cwd, file), "utf8");
     if (isGoTestFile(file)) {
       if (format === null || format === "go") out.push(...extractGoTests(source, file));
+      continue;
+    }
+    if (isRSpecFile(file)) {
+      if (format === "rspec") out.push(...extractRSpecTests(source, file));
       continue;
     }
     const framework = detectFramework(source, file);

@@ -13,7 +13,7 @@
  * `jest` is separate from `vitest` only so a report can name it; the two share
  * a filter shape exactly.
  */
-export type Framework = "vitest" | "jest" | "node" | "bun" | "playwright" | "rust" | "go" | "unknown";
+export type Framework = "vitest" | "jest" | "node" | "bun" | "playwright" | "rust" | "go" | "rspec" | "unknown";
 
 /** One test, as the source declares it. */
 export interface TestCase {
@@ -36,6 +36,14 @@ export interface TestCase {
   /** Playwright project and path relative to its configured rootDir, when listed by the runner. */
   project?: string;
   runnerFile?: string;
+  /**
+   * The line a `file:line` filter names this test by, when it is not `line`.
+   * RSpec resolves a requested line to the nearest declaration at or above
+   * it and records a multi-line call at a line of its own choosing, so an
+   * example is named by its last line and shared examples copied into a
+   * group by the line that group's block opens on.
+   */
+  runnerLine?: number;
   /**
    * The title could not be read statically -- a template with an
    * interpolation, or a `.each` row. Such a test can never be named in a

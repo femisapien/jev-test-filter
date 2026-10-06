@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { extractGoTests } from "../src/extract-go.ts";
+import { extractRSpecTests } from "../src/extract-rspec.ts";
 import { rustTestsIn } from "../src/cargo.ts";
 import { buildFilter } from "../src/filter.ts";
 import type { Selection, TestCase } from "../src/types.ts";
@@ -49,4 +50,21 @@ test("the rust fixture's module paths match what cargo would print", async () =>
     "tests::apply_discount::halves_the_total",
     "tests::counts_items",
   ]);
+});
+
+test("the rspec fixture's locations are the ones rspec resolves to each example", async () => {
+  const file = "test/fixtures/rspec/cart_spec.rb";
+  const source = await readFile(join(HERE, "fixtures/rspec/cart_spec.rb"), "utf8");
+  const all = extractRSpecTests(source, file);
+  assert.deepEqual(all.map((t) => [t.titlePath.join(" / "), t.runnerLine]), [
+    ["Cart / .apply_discount / halves the total", 9],
+    // Starts on line 11, which `rspec cart_spec.rb:11` resolves to the
+    // example above (rspec-core 3.13.6, ruby 3.3.8).
+    ["Cart / .apply_discount / clamps at zero", 15],
+    // One source example, two runs: `:20` selects both rows.
+    ["Cart / .apply_discount / takes #{pct} percent off", 20],
+    ["Cart / with nothing in it / example at ./test/fixtures/rspec/cart_spec.rb:27", 27],
+  ]);
+  const f = buildFilter(sel(all, [all[1]!, all[3]!]), "rspec");
+  assert.deepEqual(f.argv, ["test/fixtures/rspec/cart_spec.rb:15:27"]);
 });

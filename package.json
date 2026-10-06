@@ -9,6 +9,7 @@
     "playwright",
     "test-selection",
     "jev",
+    "rspec",
     "ast-grep"
   ],
   "license": "MIT",
@@ -61,6 +62,7 @@
   },
   "dependencies": {
     "@ast-grep/lang-go": "^0.0.6",
+    "@ast-grep/lang-ruby": "^0.0.7",
     "@ast-grep/lang-rust": "^0.0.7",
     "@ast-grep/napi": "^0.40.0"
   },

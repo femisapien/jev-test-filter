@@ -1,6 +1,6 @@
 ---
 name: jev-test-filter
-description: "Use when a test suite is too slow to run whole on every change and you want to run only the tests a diff can plausibly break, when reviewing updated text snapshots, wiring test selection into CI or a pre-push hook, or composing a `jev-test-filter` command for vitest, jest, node:test, bun:test, Playwright, `cargo test` or `go test`. Triggers: `jev-test-filter`, `--verify-snapshots`, `.jev-test-filter/last.json`, `TYPESAFE_API_KEY`, `--test-name-pattern`, `-t '^(?:...)$'`, `--exact`, `go test -run`, and questions like 'only run the tests affected by this change', 'why did my -t pattern match nothing', 'which tests does this PR need'. Read it BEFORE hand-writing a runner filter argument from a selection: the full-name spelling differs per runner and a wrong one fails silently."
+description: "Use when a test suite is too slow to run whole on every change and you want to run only the tests a diff can plausibly break, when reviewing updated text snapshots, wiring test selection into CI or a pre-push hook, or composing a `jev-test-filter` command for vitest, jest, node:test, bun:test, Playwright, `cargo test`, `go test` or `rspec`. Triggers: `jev-test-filter`, `--verify-snapshots`, `.jev-test-filter/last.json`, `TYPESAFE_API_KEY`, `--test-name-pattern`, `-t '^(?:...)$'`, `--exact`, `go test -run`, `rspec spec/a_spec.rb:12`, and questions like 'only run the tests affected by this change', 'why did my -t pattern match nothing', 'which tests does this PR need'. Read it BEFORE hand-writing a runner filter argument from a selection: the full-name spelling differs per runner and a wrong one fails silently."
 ---
 
 # jev-test-filter
@@ -35,6 +35,7 @@ jev-test-filter --base main --format playwright --exec -- npx playwright test
 jev-test-filter --verify-snapshots --json
 jev-test-filter --base main --format go   --exec -- go test
 jev-test-filter --base main --format rust --exec -- cargo test
+jev-test-filter --base main --format rspec --exec -- bundle exec rspec
 ```
 
 `--exec` hands argv straight to `spawn` with no shell in between. Every other
@@ -67,9 +68,11 @@ ignores images, does not edit snapshots, and does not fail CI.
 4. **A repository with more than one framework needs `--format`.** There is no
    single command that runs Vitest and Playwright, so the tool asks instead of
    guessing, and exits 1. This is the one failure that is not a fail-safe.
-5. **`--format rust` is required for Rust and is never automatic.** Listing
-   cargo's tests builds the test targets. The tool does not start a compile
-   nobody asked for.
+5. **`--format rust` and `--format rspec` are required and never automatic.**
+   Listing cargo's tests builds the test targets, and the tool does not start
+   a compile nobody asked for. `_spec.rb` files are skipped unless asked for so
+   a Rails app's front-end `vitest run` does not become a mixed-framework
+   error.
 6. **Do not use it as a merge gate on its own.** It reduces what runs on a
    branch; the full suite still belongs somewhere before release.
 
@@ -84,6 +87,7 @@ Measured, not assumed. Getting a row wrong is silent.
 | bun:test | joined `" "` (one space) | `--test-name-pattern '^(?:A\|B)$'` + files | The reporter shows `Cart > totals`, but the name pattern matches `Cart totals`. |
 | @playwright/test | runner-listed project, file and titles | `--test-list <file>` with `--exec`; otherwise `file:line` | `--exec` first collects with `--list --reporter=json`, including generated tests and project variants. |
 | cargo test | joined `"::"` | `-- --exact A B C` | names come from `cargo test -- --list`; a module path one segment wrong selects nothing |
+| rspec | joined `" "`, none before `#`/`.`/`::` after a class | `spec/a_spec.rb:12:30`, one per file | **never by name**, and each example by its **last** line: RSpec runs the declaration nearest at or above a line, and records `it(\n "a"\n) do` at its last line, so its first line runs the example before it |
 | go test | joined `"/"` | `-run '^(?:TestA\|TestB)$'` + `./pkg` | **filters per top-level function**: `-run` takes one hierarchical pattern and a second `-run` replaces the first. Pass a bare `go test` — a `./...` you add stays in the package list and every package is compiled anyway |
 
 Go scores per subtest — `--json` shows it — but selects whole top-level

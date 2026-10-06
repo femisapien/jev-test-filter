@@ -1,7 +1,8 @@
 # What each runner actually does
 
 Every line here was measured, on this machine, on Node 24.21.0, vitest 5.0.1,
-`@playwright/test` (current), cargo 1.98.0 and go 1.26.2. Each was found by
+`@playwright/test` (current), cargo 1.98.0, go 1.26.2 and rspec-core 3.13.6
+on ruby 3.3.8. Each was found by
 running the runner, not by reading its documentation, and several contradict
 what the documentation implies.
 
@@ -94,3 +95,28 @@ why every one of them is pinned by a test that spawns a real runner.
   Together with the previous point, this means "all of TestA, but only x and y
   of TestB" cannot be expressed in one `go test` invocation. Filtering per
   top-level function is the only shape that cannot under-select.
+
+## rspec
+
+- `rspec spec/a_spec.rb:N` runs the example or group **declared nearest at or
+  above line N**, not one that merely spans it.
+- An example is recorded at a line RSpec chooses: `it "a",\n  :slow do` at its
+  first line, `it(\n  "a"\n) do` at its last. So the first line of the second
+  shape runs the example **before** it, and passes. The last line of an
+  example is always safe — nothing is declared inside an example body — and
+  is what the tool emits.
+- A group is recorded the same way, at the line its block opens on at the
+  latest. That is the line that reaches examples `include_examples` copied in,
+  which keep the lines of the file that defined them.
+- `spec/a_spec.rb:7:11` takes several lines for one file, and a line filter
+  applies to its own file only: `rspec spec/a_spec.rb:8 spec/b_spec.rb` runs
+  one example of the first file and all of the second.
+- The full description joins with a space, except that nothing separates a
+  **class** from a child starting with `#`, `.` or `::`: `describe Cart` +
+  `"#total"` is `Cart#total`, `describe "Cart"` + `"#total"` is `Cart #total`.
+  A name pattern spelled one way matches nothing spelled the other, which is
+  why selection is by location only.
+- `it { is_expected.to eq 0 }` has no description until it runs (`is expected
+  to eq 0`), and `it "row #{n}"` inside a loop is several examples on one
+  line. A location reaches both.
+

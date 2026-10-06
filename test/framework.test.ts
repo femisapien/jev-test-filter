@@ -53,4 +53,6 @@ test("isTestFile accepts the usual spellings and rejects sources", () => {
   assert.equal(isTestFile("test/a.test.mjs"), true);
   assert.equal(isTestFile("src/cart.ts"), false);
   assert.equal(isTestFile("src/testing.ts"), false);
+  assert.equal(isTestFile("spec/models/cart_spec.rb"), true);
+  assert.equal(isTestFile("spec/spec_helper.rb"), false);
 });
